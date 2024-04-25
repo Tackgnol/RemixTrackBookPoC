@@ -1,41 +1,38 @@
-import type { MetaFunction } from "@remix-run/node";
+import type {LoaderFunction, MetaFunction} from "@remix-run/node";
+import {useLoaderData} from "@remix-run/react";
+import {jwtDecode} from "jwt-decode";
+import authenticator from "~/services/auth.server";
 
 export const meta: MetaFunction = () => {
-  return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
-  ];
+    return [
+        {title: "New Remix App"},
+        {name: "description", content: "Welcome to Remix!"},
+    ];
+};
+
+export let loader: LoaderFunction = async ({request}) => {
+    const token = await authenticator.isAuthenticated(request, {
+        failureRedirect: "/login",
+    });
+    const user = jwtDecode(token.accessToken);
+    const req = await fetch('http://localhost:3001/api/places', {
+        method: "GET",
+        headers: {"content-type": "application/json", authorization: `Bearer ${token.accessToken}`}
+    });
+    const places = await req.json()
+    return {user: user, places: places};
 };
 
 export default function Index() {
-  return (
-    <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
-      <h1>Welcome to Remix</h1>
-      <ul>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/blog"
-            rel="noreferrer"
-          >
-            15m Quickstart Blog Tutorial
-          </a>
-        </li>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/jokes"
-            rel="noreferrer"
-          >
-            Deep Dive Jokes App Tutorial
-          </a>
-        </li>
-        <li>
-          <a target="_blank" href="https://remix.run/docs" rel="noreferrer">
-            Remix Docs
-          </a>
-        </li>
-      </ul>
-    </div>
-  );
+    const data = useLoaderData<any>();
+    const {user, places} = data;
+    console.log('index',user);
+    return (
+        <>
+            <div> Hi, {user.name} {user.lastname} </div>
+            <ul>
+                {places?.map((place, index) => (<li key={index}>{place.name}</li>))}
+            </ul>
+        </>
+    );
 }
